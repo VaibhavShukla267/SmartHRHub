@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard | Smart HR Hub</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <nav class="sidebar">
+        <div class="sidebar-brand"><i class="bi bi-building-fill-check"></i> Smart HR Hub</div>
+        <div class="nav flex-column">
+            <a href="dashboard.html" class="nav-link active"><i class="bi bi-speedometer2"></i> Dashboard</a>
+            <a href="add.html" class="nav-link"><i class="bi bi-person-plus"></i> New Employee</a>
+            <!-- <button onclick="resetSystem()" class="nav-link w-100 text-start bg-transparent border-0 text-warning mt-5">
+                <i class="bi bi-arrow-counterclockwise"></i> Reset Data
+            </button> -->
+            <button onclick="logoutUser()" class="nav-link w-100 text-start bg-transparent border-0 text-danger mt-5"><i class="bi bi-power"></i> Logout</button>
+        </div>
+    </nav>
+
+   <main class="main-content" id="dashboard-content">
+        <h3 class="fw-bold mb-4">HR Command Center</h3>
+        
+        <div class="row g-4 mb-4">
+            <div class="col-md-4">
+                <div class="card-custom p-4 border-start border-4 border-primary">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <p class="text-muted small fw-bold text-uppercase mb-1">Total Workforce</p>
+                            <h2 class="fw-bold mb-0 text-primary" id="total-emp">0</h2>
+                        </div>
+                        <div class="bg-primary bg-opacity-10 p-3 rounded-circle text-primary">
+                            <i class="bi bi-people-fill fs-4"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card-custom p-4 border-start border-4 border-success">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <p class="text-muted small fw-bold text-uppercase mb-1">Total Disbursed</p>
+                            <h2 class="fw-bold mb-0 text-success" id="total-pay">₹0</h2>
+                        </div>
+                        <div class="bg-success bg-opacity-10 p-3 rounded-circle text-success">
+                            <i class="bi bi-cash-stack fs-4"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card-custom p-4 border-start border-4 border-danger">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <p class="text-muted small fw-bold text-uppercase mb-1">Pending (This Month)</p>
+                            <h2 class="fw-bold mb-0 text-danger" id="pending-count">0</h2>
+                        </div>
+                        <div class="bg-danger bg-opacity-10 p-3 rounded-circle text-danger">
+                            <i class="bi bi-exclamation-triangle-fill fs-4"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row g-4 mb-4">
+            <div class="col-lg-8">
+                <div class="card-custom p-4 h-100">
+                    <h5 class="fw-bold mb-3">Department Headcount</h5>
+                    <div style="height: 300px; position: relative; width: 100%;">
+                        <canvas id="deptChart"></canvas>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-4">
+                <div class="card-custom p-4 h-100">
+                    <h5 class="fw-bold mb-3">Salary Tiers</h5>
+                    <div style="height: 300px; position: relative; width: 100%;">
+                        <canvas id="salaryChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-lg-12">
+                <div class="card-custom p-4">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h5 class="fw-bold">Employee Payroll Ledger</h5>
+                        <div>
+                            <button class="btn btn-sm btn-outline-primary me-2" onclick="exportExcel()"><i class="bi bi-file-earmark-excel"></i> Excel</button>
+                            <button class="btn btn-sm btn-outline-danger" onclick="exportPDF()"><i class="bi bi-file-earmark-pdf"></i> PDF</button>
+                        </div>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table align-middle table-hover" id="employee-table">
+                            <thead class="bg-light">
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Name</th>
+                                    <th>Role</th>
+                                    <th>Base Salary</th>
+                                    <th>Last Credit</th>
+                                    <th>History</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <div class="modal fade" id="historyModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title"><i class="bi bi-clock-history"></i> Payment History: <span id="history-emp-name" class="fw-bold"></span></h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+               <div class="modal-body">
+                        <div class="table-responsive">
+                            <table class="table table-striped table-hover align-middle">
+                                <thead class="table-dark">
+                                    <tr>
+                                        <th>Date Paid</th>
+                                        <th>Month</th>
+                                        <th>Net Pay</th>
+                                        <th>Action</th> </tr>
+                                </thead>
+                                <tbody id="history-table-body">
+                                    </tbody>
+                            </table>
+                        </div>
+                        <div class="text-center py-3" id="history-empty-msg" style="display:none;">
+                            <p class="text-muted">No payment records found.</p>
+                        </div>
+                    </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="auth.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>

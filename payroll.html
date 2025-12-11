@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Process Payroll | Smart HR Hub</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <nav class="sidebar">
+        <div class="sidebar-brand"><i class="bi bi-building-fill-check"></i> Smart HR Hub</div>
+        <div class="nav flex-column">
+            <a href="dashboard.html" class="nav-link"><i class="bi bi-arrow-left"></i> Back to Dashboard</a>
+        </div>
+    </nav>
+
+    <main class="main-content">
+        <h2 class="fw-bold mb-4">Payroll Processor</h2>
+        <form id="payroll-process-form">
+            <div class="row">
+                <div class="col-lg-8">
+                    <div class="card-custom p-4">
+                        <div class="d-flex justify-content-between align-items-center mb-4">
+                            <h5 class="text-primary fw-bold mb-0">1. Attendance & Work Details</h5>
+                            <div class="col-auto">
+                                <label class="form-label small fw-bold text-muted me-2">Payment Date:</label>
+                                <input type="date" id="payment-date" class="form-control form-control-sm d-inline-block w-auto border-primary" required>
+                            </div>
+                        </div>
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label">Employee</label>
+                                <input type="text" id="p-name" class="form-control bg-light" readonly>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Base Monthly Salary (₹)</label>
+                                <input type="number" id="p-base" class="form-control bg-light" readonly>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label fw-bold">Days Worked (Out of 30)</label>
+                                <input type="number" id="days-worked" class="form-control" value="30" max="30">
+                            </div>
+                            <div class="col-12"><hr></div>
+                            
+                            <h6 class="text-info fw-bold">Work From Office (WFO) Compliance</h6>
+                            <div class="col-md-6">
+                                <label class="form-label">WFO Compulsion (Days)</label>
+                                <input type="number" id="wfh-allowed" class="form-control" value="0">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">WFO Completed (Days)</label>
+                                <input type="number" id="wfh-done" class="form-control" value="0">
+                            </div>
+
+                            <div class="col-12"><hr></div>
+                            <h6 class="text-success fw-bold">Overtime</h6>
+                            <div class="col-md-6">
+                                <label class="form-label">Overtime Hours</label>
+                                <input type="number" id="ot-hours" class="form-control" value="0">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Hourly Rate (₹)</label>
+                                <input type="number" id="ot-rate" class="form-control" placeholder="Auto-calculated if empty">
+                            </div>
+
+                            <div class="col-12"><hr></div>
+                            <h6 class="text-danger fw-bold">Deductions</h6>
+                            <div class="col-md-6">
+                                <div class="form-check form-switch mt-2">
+                                    <input class="form-check-input" type="checkbox" id="deduct-pf" checked>
+                                    <label class="form-check-label">Deduct PF (12%)</label>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Insurance Cost (₹)</label>
+                                <input type="number" id="deduct-insurance" class="form-control" value="0">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-lg-4">
+                    <div class="card-custom p-4 bg-dark text-white sticky-top" style="top: 20px;">
+                        <h4 class="mb-4">Salary Slip Preview</h4>
+                        <div class="d-flex justify-content-between mb-2">
+                            <span class="text-white-50">Base Salary</span>
+                            <span class="fw-bold" id="display-base">₹0</span>
+                        </div>
+                        <div class="d-flex justify-content-between mb-2">
+                            <span class="text-white-50">Attendance Earnings</span>
+                            <span class="text-success" id="calc-gross">₹0</span>
+                        </div>
+                        <div class="d-flex justify-content-between mb-2">
+                            <span class="text-white-50">Overtime Bonus</span>
+                            <span class="text-success" id="calc-ot">₹0</span>
+                        </div>
+                        <hr class="border-secondary">
+                        <div class="d-flex justify-content-between mb-2">
+                            <span class="text-danger">WFO Penalty</span>
+                            <span class="text-danger" id="calc-wfh-penalty">₹0</span>
+                        </div>
+                        <div class="d-flex justify-content-between mb-2">
+                            <span class="text-danger">Provident Fund</span>
+                            <span class="text-danger" id="calc-pf">₹0</span>
+                        </div>
+                        <div class="d-flex justify-content-between mb-2">
+                            <span class="text-danger">Insurance</span>
+                            <span class="text-danger" id="calc-insurance">₹0</span>
+                        </div>
+                        <hr class="border-white">
+                        <div class="d-flex justify-content-between align-items-center mb-4">
+                            <h3 class="fw-bold">Net Pay</h3>
+                            <h3 class="fw-bold text-success" id="display-net">₹0</h3>
+                            <input type="hidden" id="final-net-pay">
+                        </div>
+
+                        <button type="submit" class="btn btn-success w-100 py-3 rounded-pill fw-bold shadow">
+                            <i class="bi bi-wallet2"></i> Disburse Salary
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </form>
+    </main>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="auth.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>
