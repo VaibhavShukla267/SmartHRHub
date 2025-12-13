@@ -8,128 +8,102 @@ document.addEventListener('DOMContentLoaded', () => {
     const saveEmployees = (data) => localStorage.setItem(EMP_KEY, JSON.stringify(data));
     const getPayrolls = () => JSON.parse(localStorage.getItem(PAY_KEY)) || [];
 
-    
+    // Screen Formatter
     const formatRupee = (amt) => {
         if (isNaN(amt) || amt === null || amt === undefined) return "₹0";
         return new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(amt);
     };
 
-
+    // PDF Formatter
     const safeFormat = (amt) => {
         if (isNaN(amt) || amt === null || amt === undefined) return "Rs. 0";
         return "Rs. " + new Intl.NumberFormat('en-IN', { maximumFractionDigits: 0 }).format(amt);
     };
 
-   /* ================= DASHBOARD LOGIC ================= */
+    /* ================= DASHBOARD LOGIC ================= */
     if (document.getElementById('dashboard-content')) {
         const employees = getEmployees();
         const payrolls = getPayrolls();
 
-        
+        // Stats
         const totalDisbursed = payrolls.reduce((sum, record) => sum + (Number(record.netPay) || 0), 0);
         document.getElementById('total-emp').textContent = employees.length;
         document.getElementById('total-pay').textContent = formatRupee(totalDisbursed);
 
+        // Pending Check
+        const currentMonthShort = new Date().toLocaleString('default', { month: 'short' });
+        const currentYear = new Date().getFullYear();
         
-        const currentMonthShort = new Date().toLocaleString('default', { month: 'short' }); 
         const activeEmpIds = employees.map(e => e.id);
+        
+        // Find employees paid THIS month AND THIS year
         const paidActiveEmpIds = new Set(
-            payrolls
-            .filter(p => p.month === currentMonthShort && activeEmpIds.includes(p.empId))
-            .map(p => p.empId)
+            payrolls.filter(p => {
+                // Parse the saved date "dd/mm/yyyy" to check year match
+                const [d, m, y] = p.date.split('/'); 
+                return p.month === currentMonthShort && Number(y) === currentYear && activeEmpIds.includes(p.empId);
+            }).map(p => p.empId)
         );
+
         let pendingCount = employees.length - paidActiveEmpIds.size;
         if (pendingCount < 0) pendingCount = 0;
-
-        const pendingEl = document.getElementById('pending-count');
-        pendingEl.textContent = pendingCount;
+        document.getElementById('pending-count').textContent = pendingCount;
         
-
         if(pendingCount === 0 && employees.length > 0) {
-            pendingEl.classList.replace('text-danger', 'text-success');
-            if(pendingEl.closest('.card-custom')) pendingEl.closest('.card-custom').classList.replace('border-danger', 'border-success');
+            const pEl = document.getElementById('pending-count');
+            pEl.classList.replace('text-danger', 'text-success');
+            if(pEl.closest('.card-custom')) pEl.closest('.card-custom').classList.replace('border-danger', 'border-success');
         }
 
-        
-        const deptCanvas = document.getElementById('deptChart');
-        if (deptCanvas) {
-
+        // Charts
+        const deptCtx = document.getElementById('deptChart');
+        if (deptCtx) {
             const positionCounts = {};
             employees.forEach(e => {
-                const pos = (e.position || "Unknown").trim(); 
+                const pos = (e.position || "Unknown").trim();
                 positionCounts[pos] = (positionCounts[pos] || 0) + 1;
             });
-
-            
             if (window.myDeptChart) window.myDeptChart.destroy();
-
-            window.myDeptChart = new Chart(deptCanvas, {
+            window.myDeptChart = new Chart(deptCtx, {
                 type: 'bar',
                 data: {
                     labels: Object.keys(positionCounts),
-                    datasets: [{
-                        label: 'Number of Staff',
-                        data: Object.values(positionCounts),
-                        backgroundColor: '#2563eb',
-                        borderRadius: 5,
-                        barPercentage: 0.6
-                    }]
+                    datasets: [{ label: 'Staff', data: Object.values(positionCounts), backgroundColor: '#2563eb', borderRadius: 5, barPercentage: 0.6 }]
                 },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false, 
-                    plugins: { legend: { display: false } },
-                    scales: { 
-                        y: { 
-                            beginAtZero: true, 
-                            ticks: { stepSize: 1 } 
-                        } 
-                    }
-                }
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } } }
             });
         }
 
-        
         const salaryCanvas = document.getElementById('salaryChart');
         if (salaryCanvas && employees.length > 0) {
-
             const high = employees.filter(e => Number(e.salary) > 50000).length;
             const mid = employees.filter(e => Number(e.salary) >= 25000 && Number(e.salary) <= 50000).length;
             const low = employees.filter(e => Number(e.salary) < 25000).length;
-
-            // Prevent chart duplication bug
             if (window.mySalaryChart) window.mySalaryChart.destroy();
-
             window.mySalaryChart = new Chart(salaryCanvas, {
                 type: 'doughnut',
                 data: {
                     labels: ['High (>50k)', 'Mid (25k-50k)', 'Low (<25k)'],
-                    datasets: [{
-                        data: [high, mid, low],
-                        backgroundColor: ['#2563eb', '#06b6d4', '#cbd5e1'],
-                        borderWidth: 2,
-                        borderColor: '#ffffff'
-                    }]
+                    datasets: [{ data: [high, mid, low], backgroundColor: ['#2563eb', '#06b6d4', '#cbd5e1'], borderWidth: 2, borderColor: '#ffffff' }]
                 },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false, 
-                    cutout: '70%', 
-                    plugins: { 
-                        legend: { position: 'bottom', labels: { usePointStyle: true, padding: 20 } } 
-                    }
-                }
+                options: { responsive: true, maintainAspectRatio: false, cutout: '70%', plugins: { legend: { position: 'bottom', labels: { usePointStyle: true, padding: 20 } } } }
             });
         }
 
-        
+        // Table
         const tbody = document.querySelector('#employee-table tbody');
         tbody.innerHTML = '';
         employees.forEach((emp, idx) => {
             const empHistory = payrolls.filter(p => p.empId == emp.id);
             const lastPay = empHistory.length > 0 ? empHistory[empHistory.length - 1] : null;
-            const isPaidThisMonth = lastPay && lastPay.month === currentMonthShort;
             
+            // Strict check for current month/year status dot
+            let isPaidThisMonth = false;
+            if(lastPay) {
+                const [d, m, y] = lastPay.date.split('/');
+                if(lastPay.month === currentMonthShort && Number(y) === currentYear) isPaidThisMonth = true;
+            }
+
             const lastPayText = lastPay 
                 ? `<span class="fw-bold text-dark">${formatRupee(lastPay.netPay)}</span><br><small class="text-muted" style="font-size:0.75rem">${lastPay.date}</small>` 
                 : '<span class="text-muted small">Not paid yet</span>';
@@ -155,36 +129,26 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    /* ================= HISTORY & PDF GENERATOR ================= */
-   /* ================= HISTORY, PDF & DELETE TRANSACTION ================= */
+    /* ================= HISTORY ================= */
     window.viewHistory = (empId) => {
         const employees = getEmployees();
         const payrolls = getPayrolls();
         const emp = employees.find(e => e.id == empId);
         
         document.getElementById('history-emp-name').textContent = emp ? emp.name : "Unknown";
-
-        
         const mappedPayrolls = payrolls.map((pay, index) => ({ ...pay, originalIndex: index }));
-
-
         const myPayments = mappedPayrolls.filter(p => p.empId == empId);
         
         const tbody = document.getElementById('history-table-body');
         const emptyMsg = document.getElementById('history-empty-msg');
         
         tbody.innerHTML = ''; 
-
         if (myPayments.length === 0) {
             emptyMsg.style.display = 'block';
         } else {
             emptyMsg.style.display = 'none';
-            
-            
             myPayments.reverse().forEach((pay) => {
-
                 const payDataSafe = btoa(JSON.stringify(pay));
-                
                 tbody.innerHTML += `
                     <tr>
                         <td>${pay.date}</td>
@@ -192,12 +156,8 @@ document.addEventListener('DOMContentLoaded', () => {
                         <td class="fw-bold text-success">${formatRupee(pay.netPay)}</td>
                         <td>
                             <div class="btn-group">
-                                <button onclick="generatePayslipPDF('${payDataSafe}')" class="btn btn-sm btn-outline-danger" title="Download Slip">
-                                    <i class="bi bi-file-earmark-pdf-fill"></i>
-                                </button>
-                                <button onclick="deletePayroll(${pay.originalIndex})" class="btn btn-sm btn-outline-secondary" title="Delete Record">
-                                    <i class="bi bi-trash-fill"></i>
-                                </button>
+                                <button onclick="generatePayslipPDF('${payDataSafe}')" class="btn btn-sm btn-outline-danger" title="Download Slip"><i class="bi bi-file-earmark-pdf-fill"></i></button>
+                                <button onclick="deletePayroll(${pay.originalIndex})" class="btn btn-sm btn-outline-secondary" title="Delete"><i class="bi bi-trash-fill"></i></button>
                             </div>
                         </td>
                     </tr>`;
@@ -209,36 +169,27 @@ document.addEventListener('DOMContentLoaded', () => {
     window.deletePayroll = (index) => {
         Swal.fire({
             title: "Delete Transaction?",
-            text: "This will remove this payment from the Total Disbursed amount.",
+            text: "This removes the record and adjusts Total Disbursed.",
             icon: "warning",
             showCancelButton: true,
             confirmButtonColor: '#d33',
-            confirmButtonText: 'Yes, remove it!'
         }).then((result) => {
             if (result.isConfirmed) {
                 const payrolls = getPayrolls();
-                
-                
                 payrolls.splice(index, 1);
-                
-                
                 localStorage.setItem(PAY_KEY, JSON.stringify(payrolls));
-                
-                
                 location.reload();
             }
         });
     };
 
     window.generatePayslipPDF = (payDataEncoded) => {
-
         const pay = JSON.parse(atob(payDataEncoded));
         const employees = getEmployees();
         const emp = employees.find(e => e.id == pay.empId);
         const { jsPDF } = window.jspdf;
         const doc = new jsPDF();
 
-        // HEADER
         doc.setFillColor(37, 99, 235);
         doc.rect(0, 0, 210, 35, 'F');
         doc.setTextColor(255, 255, 255);
@@ -246,17 +197,14 @@ document.addEventListener('DOMContentLoaded', () => {
         doc.setFont("helvetica", "bold");
         doc.text("SALARY SLIP", 105, 22, { align: "center" });
 
-        // DETAILS
         doc.setTextColor(0, 0, 0);
         doc.setFontSize(10);
         doc.setFont("helvetica", "bold");
         doc.text("EMPLOYEE", 14, 50);
         doc.setFont("helvetica", "normal");
-        // Fallback for deleted employees
         const empName = emp ? emp.name : pay.empName || "Unknown";
         const empPos = emp ? emp.position : "N/A";
         const empId = emp ? emp.id : pay.empId;
-        
         doc.text(`Name: ${empName}`, 14, 58);
         doc.text(`ID: ${empId}`, 14, 64);
         doc.text(`Role: ${empPos}`, 14, 70);
@@ -266,7 +214,6 @@ document.addEventListener('DOMContentLoaded', () => {
         doc.setFont("helvetica", "normal");
         doc.text(`${pay.date}`, 140, 58);
 
-        // TABLE
         const d = pay.details || { base: 0, attendance: pay.netPay, ot: 0, penalty: 0, pf: 0, insurance: 0 };
         const tableBody = [
             [{ content: 'EARNINGS', colSpan: 2, styles: { fillColor: [240, 240, 240], fontStyle: 'bold' } }],
@@ -277,13 +224,12 @@ document.addEventListener('DOMContentLoaded', () => {
             ['WFO Penalty', `- ${safeFormat(d.penalty)}`],
             ['Provident Fund', `- ${safeFormat(d.pf)}`],
             ['Insurance', `- ${safeFormat(d.insurance)}`],
-            [{ content: 'NET PAY', styles: { fillColor: [37, 99, 235], textColor: 255, fontStyle: 'bold', fontSize: 12 } }, 
-             { content: safeFormat(pay.netPay), styles: { fillColor: [37, 99, 235], textColor: 255, fontStyle: 'bold', fontSize: 12, halign: 'right' } }]
+            [{ content: 'NET PAY', styles: { fillColor: [37, 99, 235], textColor: 255, fontStyle: 'bold', fontSize: 12 } }, { content: safeFormat(pay.netPay), styles: { fillColor: [37, 99, 235], textColor: 255, fontStyle: 'bold', fontSize: 12, halign: 'right' } }]
         ];
-
         doc.autoTable({ startY: 80, body: tableBody, theme: 'grid', styles: { fontSize: 10, cellPadding: 5 }, columnStyles: { 0: { cellWidth: 120 }, 1: { halign: 'right' } } });
         doc.save(`Payslip_${empName}_${pay.month}.pdf`);
     };
+
     /* ================= PAYROLL CALCULATOR ================= */
     const payrollForm = document.getElementById('payroll-process-form');
     if (payrollForm) {
@@ -302,7 +248,6 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('p-base').value = emp.salary;
         document.getElementById('display-base').textContent = formatRupee(emp.salary);
 
-        // Load Employee Settings
         if (emp.settings) {
             document.getElementById("days-worked").value = emp.settings.daysWorked || 30;
             document.getElementById("wfh-allowed").value = emp.settings.wfhAllowed || 0;
@@ -313,30 +258,22 @@ document.addEventListener('DOMContentLoaded', () => {
             document.getElementById("deduct-pf").checked = emp.settings.deductPF !== false;
         }
 
-        let currentDetails = {};
-
-        const calculatePayroll = () => {
-            const base = emp.salary || 0;
+        const performCalculation = () => {
+            const base = Number(emp.salary) || 0;
             const daysWorked = Number(document.getElementById("days-worked").value) || 0;
             const perDaySalary = base / 30; 
             const earnedSalary = perDaySalary * daysWorked;
-
             const otHours = Number(document.getElementById("ot-hours").value) || 0;
             let otRate = Number(document.getElementById("ot-rate").value);
             if(!otRate) otRate = (base / 30) / 8; 
             const otBonus = otHours * otRate;
-
             const wfoTarget = Number(document.getElementById("wfh-allowed").value) || 0;
             const wfoDone = Number(document.getElementById("wfh-done").value) || 0;
             let penalty = 0;
-            if(wfoDone < wfoTarget) {
-                penalty = (wfoTarget - wfoDone) * (perDaySalary * 0.5); 
-            }
-
+            if(wfoDone < wfoTarget) penalty = (wfoTarget - wfoDone) * (perDaySalary * 0.5); 
             const insurance = Number(document.getElementById("deduct-insurance").value) || 0;
             let pf = 0;
             if (document.getElementById("deduct-pf").checked) pf = base * 0.12;
-
             const netPay = earnedSalary + otBonus - penalty - insurance - pf;
 
             document.getElementById("calc-gross").textContent = formatRupee(earnedSalary);
@@ -347,38 +284,59 @@ document.addEventListener('DOMContentLoaded', () => {
             document.getElementById("display-net").textContent = formatRupee(netPay);
             document.getElementById("final-net-pay").value = Math.round(netPay);
 
-            // SAVE BREAKDOWN to variable
-            currentDetails = {
-                base: base,
-                attendance: earnedSalary,
-                ot: otBonus,
-                penalty: penalty,
-                pf: pf,
-                insurance: insurance
-            };
+            return { base: base, attendance: earnedSalary, ot: otBonus, penalty: penalty, pf: pf, insurance: insurance };
         };
 
         const inputs = payrollForm.querySelectorAll('input');
-        inputs.forEach(input => input.addEventListener('input', calculatePayroll));
-        calculatePayroll(); // Run once on load
+        inputs.forEach(input => input.addEventListener('input', performCalculation));
+        performCalculation();
 
         payrollForm.addEventListener('submit', (e) => {
             e.preventDefault();
-            calculatePayroll(); // Ensure details are fresh
 
+            // 1. GET DATA
+            const currentDetails = performCalculation();
             const dateInput = document.getElementById('payment-date').value;
             const payDateObj = dateInput ? new Date(dateInput) : new Date();
-            const dayString = payDateObj.toLocaleDateString('en-IN');
-            const monthString = payDateObj.toLocaleString('default', { month: 'short' });
+            const dayString = payDateObj.toLocaleDateString('en-IN'); // e.g., "15/12/2025"
+            const monthString = payDateObj.toLocaleString('default', { month: 'short' }); // "Dec"
+            const yearNum = payDateObj.getFullYear(); // 2025
 
+            // 2. DUPLICATE CHECK
             const payrolls = getPayrolls();
+            
+            // Check if this employee already has a record for this Month AND Year
+            const alreadyPaid = payrolls.some(p => {
+                if (p.empId !== emp.id) return false;
+                
+                // Parse the existing record's date
+                // Format is dd/mm/yyyy
+                const parts = p.date.split('/');
+                if (parts.length === 3) {
+                    const existingYear = Number(parts[2]);
+                    // Compare Month String ("Dec") and Year Number (2025)
+                    return p.month === monthString && existingYear === yearNum;
+                }
+                return false;
+            });
+
+            if (alreadyPaid) {
+                Swal.fire({
+                    title: "Duplicate Payment!",
+                    text: `This employee has already been paid for ${monthString} ${yearNum}. Please delete the existing record first if you need to redo it.`,
+                    icon: "error"
+                });
+                return; // STOP HERE
+            }
+
+            // 3. PROCEED IF NO DUPLICATE
             payrolls.push({
                 empId: emp.id,
                 empName: emp.name,
                 netPay: Number(document.getElementById('final-net-pay').value),
                 date: dayString,
                 month: monthString,
-                details: currentDetails // Saving the breakdown here
+                details: currentDetails
             });
             localStorage.setItem(PAY_KEY, JSON.stringify(payrolls));
 
@@ -401,7 +359,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-
+    /* ================= CRUD & UTILS ================= */
     const addForm = document.getElementById('add-employee-form');
     if (addForm) {
         addForm.addEventListener('submit', (e) => {
@@ -419,7 +377,6 @@ document.addEventListener('DOMContentLoaded', () => {
             Swal.fire("Success!", "Employee Added", "success").then(() => window.location.href = "dashboard.html");
         });
     }
-
     const updateForm = document.getElementById('update-employee-form');
     if (updateForm) {
         const params = new URLSearchParams(window.location.search);
@@ -442,59 +399,30 @@ document.addEventListener('DOMContentLoaded', () => {
             Swal.fire("Updated!", "Details updated", "success").then(() => window.location.href = "dashboard.html");
         });
     }
-
     window.deleteEmp = (index) => {
-        Swal.fire({
-            title: "Delete?",
-            icon: "warning",
-            showCancelButton: true,
-            confirmButtonColor: '#d33',
-        }).then((result) => {
-            if (result.isConfirmed) {
-                const employees = getEmployees();
-                employees.splice(index, 1);
-                saveEmployees(employees);
-                location.reload();
-            }
-        });
+        Swal.fire({ title: "Delete?", icon: "warning", showCancelButton: true, confirmButtonColor: '#d33' })
+            .then((r) => { if(r.isConfirmed) { const e = getEmployees(); e.splice(index, 1); saveEmployees(e); location.reload(); }});
     };
-
     window.exportExcel = () => {
-        const employees = getEmployees();
-        const worksheet = XLSX.utils.json_to_sheet(employees);
-        const workbook = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(workbook, worksheet, "Employees");
-        XLSX.writeFile(workbook, "HR_Data.xlsx");
+        const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(getEmployees()), "Employees");
+        XLSX.writeFile(wb, "HR_Data.xlsx");
     };
-
     window.exportPDF = () => {
-        const { jsPDF } = window.jspdf;
-        const doc = new jsPDF();
-        const employees = getEmployees();
-        doc.setFontSize(18);
-        doc.text("Employee Directory", 14, 22);
-        const tableData = employees.map(e => [e.id, e.name, e.position, e.salary, e.email]);
-        doc.autoTable({ head: [['ID', 'Name', 'Position', 'Salary', 'Email']], body: tableData, startY: 30 });
-        doc.save("Employees.pdf");
+        const { jsPDF } = window.jspdf; const doc = new jsPDF();
+        doc.text("Employees", 14, 20);
+        doc.autoTable({ head: [['ID', 'Name', 'Role', 'Salary']], body: getEmployees().map(e => [e.id, e.name, e.position, e.salary]), startY: 30 });
+        doc.save("Directory.pdf");
     };
-});
-
-/* ================= SYSTEM RESET ================= */
     window.resetSystem = () => {
         Swal.fire({
             title: "Reset Financial Data?",
             text: "This will delete all payment history and reset 'Total Disbursed' to ₹0. Your employee list will stay.",
-            icon: "warning",
-            showCancelButton: true,
-            confirmButtonColor: '#d33',
-            confirmButtonText: 'Yes, Wipe Data'
+            icon: "warning", showCancelButton: true, confirmButtonColor: '#d33', confirmButtonText: 'Yes, Wipe Data'
         }).then((result) => {
             if (result.isConfirmed) {
-                // This command wipes the payment history
                 localStorage.removeItem('smart_hr_payrolls');
-                
-                Swal.fire("Reset!", "System is now at ₹0.", "success")
-                .then(() => location.reload());
+                Swal.fire("Reset!", "System is now at ₹0.", "success").then(() => location.reload());
             }
         });
     };
+});
